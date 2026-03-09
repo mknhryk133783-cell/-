@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>標的型攻撃メール訓練クイズ</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; padding: 0; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+
+const PhishingQuiz = () => {
+  const [name, setName] = useState('');
+  const [current, setCurrent] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [showResult, setShowResult] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [reviewIndex, setReviewIndex] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [current, showResult, reviewMode]);
+
+  const questions = [
+    {
+      id: 1,
+      subject: '【至急】新人歓迎会の日程調整について',
+      from: 'k-sato@a-lt.co.jp <k-sato@soumu-dept.jp>',
+      attachment: '-',
+      body: `皆様\n\nお疲れ様です。佐藤です。\nこの度、当部署に新しく配属された方との親睦を深めるため、\n歓迎会を開催したいと思います。\n\nつきましては日程を調整したいため以下のURLから\n本日17:30までにご回答をお願いします。\n日程調整：https://forms.office.com/r/TT8dhaXCjfa\n\n佐藤\nk-sato@a-lt.co.jp`,
+      correct: 4,
+      points: ['差出人の表示名と実際のアドレスが異なる', '本日17:30までという短い期限', '署名が簡素', '本文中のアドレスと送信元が不一致'],
+      context: '総務部には確かに「佐藤」という社員が在籍していますが、普段あまりやり取りはありません。現在時刻は2025年12月1日の 15:00 です。あなたは急ぎの仕事を抱えています。'
+    },
+    {
+      id: 2,
+      subject: '★ワーケーションモニター募集★ in 沖縄',
+      from: '福利厚生担当 <a-it-workcation@sysinfo2.net>',
+      attachment: 'ワーケーションモニターin沖縄_応募要項.docx',
+      body: `皆さま\n\nご希望の中から抽選で10名様限定にワーケーションモニター（※）を募集します。\n\n※沖縄までの往返旅行、宿泊費、食事（3食）をプレゼント！！！\n\n本モニターに関する応募方法は添付の「ワーケーションモニターin沖縄_応募要項」をご確認ください。\n\n参加をご希望される方、期限は  2025年12月5日(金) 17:00まで！\n\n本取り組みに参与して、ワーケーションで　Work in Life　を充実させよう！`,
+      correct: 5,
+      points: ['ドメインが不審（sysinfo2.net）', '名乗りが無い', '誤字「参与」', '署名が無い', '添付ファイル（.docx）'],
+      context: 'あなたの会社では福利厚生の案内は通常、人事部から送られてきます。現在時刻は2025年12月1日の 10:00 です。最近仕事が忙しく、休暇を取りたいと考えていました。'
+    },
+    {
+      id: 3,
+      subject: '在宅業務の支援手当支給について',
+      from: 'テレワーク支援担当 <telework@a-it.co.jp>',
+      attachment: '-',
+      body: `社員各位\n\nお疲れ様です。\n在宅業務支援担当です。\n\n在宅業務を継続されている各社員に対して、\n2025年度末の在宅業務支援一時手当の支給が決定いたしました。\n\nつきましては、詳細は下記をご確認下さい。\n本日中に確認をお願い致します。\n\nhttp://telework-payment-info.net/details\n\n以上、よろしくお願いいたします。`,
+      correct: 4,
+      points: ['ドメインが微妙に違う（a-it.co.jp）', '外部サイトへ誘導', '本日中という短い期限', '署名が無い'],
+      context: 'あなたは週3日在宅勤務をしています。会社からの手当支給の案内を待っていました。現在時刻は2025年12月1日の 14:00 です。'
+    },
+    {
+      id: 4,
+      subject: '【緊急】セキュリテイインシデント発生に伴う会議の開催',
+      from: 'リスク管理部 <risk-mgr@a-lt.co.jp>',
+      attachment: '緊急会議資料_20251201.xls',
+      body: `TO  各位\n\nお疲れ様です。\n\n※本メールは役員および各部長宛てに配信しております。\n\n大変申し訳ございませんが、本日15:00より緊急会議を開催いたします。\n関係者への展開、調整を至急お願いします。\n\n会議詳細は添付資料をご確認ください。\n\nリスク管理`,
+      correct: 4,
+      points: ['件名に誤字「セキュリテイ」', '担当者名がない', '署名が簡素', '古い形式の添付ファイル（.xls）'],
+      context: 'あなたは部長職です。リスク管理部とは月次会議で接点があります。現在時刻は2025年12月1日の 14:30 です。15:00から別の重要会議が入っています。'
+    },
+    {
+      id: 5,
+      subject: '【必須】情報セキュリテイ研修の受講について',
+      from: '人材開発部 <e-learning@training-sys.com>',
+      attachment: '-',
+      body: `※本メールは必須コースの受講が完了していない方にお送りしています。\n\n■必須コース「情報セキュリティ対策講座」\n所要時間:約15分\n\nお手数ですが、本日23:59までに下記コースURLよりログインして受講してください。\n\n期限内に必ず完了するようお願いいたします。\n\n【コースURL】\nhttps://elearning-portal.net/course/security2025\n\n本メールは自動送信です。`,
+      correct: 5,
+      points: ['件名に誤字「セキュリテイ」', '外部ドメイン（training-sys.com）', 'URLが外部サイト', '本日23:59までという短い期限', '署名が無い'],
+      context: '先月、会社の必須研修を受講したはずです。現在時刻は2025年12月1日の 20:00 です。明日は朝から重要なプレゼンがあり、準備が必要です。'
+    },
+    {
+      id: 6,
+      subject: '【警告】アカウントで不正なログインを検出しました',
+      from: 'セキュリティ監視センタ <no-reply@security-alert.jp>',
+      attachment: '-',
+      body: `このメールはシステムによりお送りしております。\n\nこれまでご利用されたことのない端末からのログインが検出されました。アカウントの安全性を保つため、このログインがご本人によるものかを本日中にご確認下さい。\n\n検出日時： 2025年12月1日 14:23 (JST)\nデバイス： PC(Windows)\nIPアドレス： 203.0.113.45\nアクセス元： 東京都\n\n心当たりが無い場合、以下URLリンクより至急ログイン履歴を確認ください。\n\nhttps://account-security-verify.net/check-login\n\n※本日中に確認されない場合、アカウントを一時停止いたします。`,
+      correct: 5,
+      points: ['差出人の誤字「センタ」', '外部ドメイン（security-alert.jp）', 'URLが外部サイト', '本日中という期限', '「アカウント停止」という脅迫的な文言'],
+      context: '今朝、自宅のPCからログインしました。会社では通常、セキュリティアラートはIT部門から直接連絡が来ます。現在時刻は2025年12月1日の 15:30 です。'
+    },
+    {
+      id: 7,
+      subject: '【重要】Internet Explorerのサポート終了について',
+      from: '情報システム部 <it-helpdesk@a-it.co.jp>',
+      attachment: '-',
+      body: `各位\n\nお疲れ様です。情報システム担当です。\n\n2025年12月31日でInternet Explorerのサポートを完全終了するとMicrosoft社から発表がありました。\n\n推奨ブラウザへの移行が済んでいない方は、\n以下リンクを参考に本日中に対応をお願いいたします。\n\n<参考> 推奨ブラウザへの移行手順\nhttps://browser-migration-support.net/guide/ie-edge\n\n対応されない場合、来年1月以降は社内システムにアクセスできなくなりますので、ご注意ください。\n\nよろしくお願いいたします。`,
+      correct: 4,
+      points: ['ドメインが微妙に違う（a-it.co.jp）', 'URLが外部サイト', '本日中という短い期限', '署名が無い'],
+      context: 'あなたは既にEdgeを使用しています。情報システム部からの案内は通常、担当者名が明記されています。現在時刻は2025年12月1日の 16:00 です。'
+    },
+    {
+      id: 8,
+      subject: '【障害通知】Microsoft Teamsで障害が発生しています',
+      from: 'サポートセンタ <support@a-lt.co.jp>',
+      attachment: '-',
+      body: `お疲れ様です。\nサポートセンター担当の鈴木です。\n\n現在MicrosoftTeamsで障害が起きており、一部、Teams会議が開催できない状況になっています。\n\n障害が起きている地域については以下のマップをご参照ください。\n一見会議に参加できているようでも、ほかの参加者から確認できないという事象もございますので、\n\n必ずご確認をお願いいたします。\nhttps://teams-outage-status.jp/map/current\n\nサポートセンター 鈴木\n内線：3245`,
+      correct: 2,
+      points: ['差出人の誤字「サポートセンタ」', 'URLが外部サイトでMicrosoft公式ではない'],
+      context: 'サポートセンターの鈴木さんとは面識があります。30分後にTeams会議が予定されています。現在時刻は2025年12月1日の 13:30 です。'
+    },
+    {
+      id: 9,
+      subject: 'Re: 【資料送付】12月度報告書の確認依頼',
+      from: '文書管理システム <doc-system@fiie-delivery.net>',
+      attachment: '-',
+      body: `------------------------------------------------------------------------\n添付ファイルダウンロードURLのお知らせ\n------------------------------------------------------------------------\n\n先程送りましたメールの添付ファイルのダウンロード場所をお知らせします。\n\n【件名】12月度報告書の確認依頼\n【URL】https://secure-doc-download.net/get/20251201abc\n【送信者】yamada.taro@a-lt.co.jp\n\n※以下の日時までに上記URLからデータを取得してください。\n  データ有効期限：2025年12月1日 23:59\n\n※パスワードは別途メールでお送りいたします。`,
+      correct: 4,
+      points: ['「先程送りました」とあるが元メールが存在しない', '差出人ドメインに誤字「fiie-delivery」', '外部サイトへ誘導', '本日23:59までという短い期限'],
+      context: '山田太郎さんは同じ部署の同僚です。しかし、「先程」のメールは受信していません。現在時刻は2025年12月1日の 17:00 です。'
+    },
+    {
+      id: 10,
+      subject: '【緊急】給与システムメンテナンスの実施について',
+      from: '人事部給与担当 <jinji@a-it.co.jp>',
+      attachment: '-',
+      body: `社員各位\n\nお疲れ様です。\n\n本日18:00より給与システムの緊急メンテナンスを実施いたします。\nメンテナンス中はシステムへのアクセスができなくなります。\n\n給与データの確認が必要な方は、事前に以下のバックアップシステムよりデータをダウンロードしてください。\n\nバックアップシステム：http://payroll-backup-sys.net/download\nアクセス期限：本日17:30まで\n\nご不便をおかけしますが、ご協力をお願いいたします。\n\n人事部`,
+      correct: 5,
+      points: ['ドメインが微妙に違う（a-it.co.jp）', 'URLが外部サイト', '本日17:30までという短い期限', '緊急メンテナンスを突然通知', '署名が簡素'],
+      context: '給与明細は毎月25日にシステムで確認しています。通常、メンテナンスは事前に予告されます。現在時刻は2025年12月1日の 17:00 です。'
+    }
+  ];
+
+  const resetQuiz = () => {
+    setName('');
+    setCurrent(0);
+    setAnswers([]);
+    setShowResult(false);
+    setStarted(false);
+    setSelected(null);
+    setReviewMode(false);
+    setReviewIndex(null);
+  };
+
+  const handleStart = () => { 
+    if (name.trim()) setStarted(true); 
+  };
+  
+  const handleNext = () => {
+    setAnswers([...answers, { id: questions[current].id, selected, correct: questions[current].correct }]);
+    setSelected(null);
+    current < questions.length - 1 ? setCurrent(current + 1) : setShowResult(true);
+  };
+
+  const handleReview = (index) => {
+    setReviewIndex(index);
+    setReviewMode(true);
+    setSelected(answers[index].selected);
+  };
+
+  const handleBackToResults = () => {
+    setReviewMode(false);
+    setReviewIndex(null);
+    setSelected(null);
+  };
+
+  const score = answers.filter(a => a.selected === a.correct).length;
+  
+  const rating = (s) => {
+    const p = (s / questions.length) * 100;
+    if (p >= 90) return { text: '優秀', color: 'text-green-600', msg: 'セキュリティ意識が非常に高いです！' };
+    if (p >= 70) return { text: '良好', color: 'text-blue-600', msg: '標的型攻撃メールをよく理解しています。' };
+    if (p >= 50) return { text: '要注意', color: 'text-yellow-600', msg: 'さらに学習が必要です。' };
+    return { text: '危険', color: 'text-red-600', msg: '再度学習してください。' };
+  };
+
+  // スタート画面
+  if (!started) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+        <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-xl p-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-red-100 rounded-full mb-4">
+              <Shield className="w-10 h-10 text-red-600" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">標的型攻撃メール訓練クイズ</h1>
+            <p className="text-gray-600">全10問</p>
+          </div>
+          
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+            <div className="flex items-start">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 mr-2" />
+              <div>
+                <h3 className="font-semibold text-yellow-800 mb-1">不審な箇所</h3>
+                <p className="text-sm text-yellow-700 mb-2">実際の標的型攻撃メールを模したサンプルを10問出題します。各メールに含まれる<span className="text-red-600 font-semibold">不審点の数</span>を選択してください。</p>
+                <p className="text-xs text-yellow-700 mt-2">※ 秘匿性のため、メインのドメインは<span className="font-semibold">@a-lt.co.jp</span>にしております。</p>
+                <p className="text-xs text-yellow-700">※ メールは<span className="font-semibold">2025/12/1時点</span>の受信。</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+            <div className="flex items-start">
+              <Mail className="w-5 h-5 text-blue-600 mt-0.5 mr-2" />
+              <div>
+                <h3 className="font-semibold text-blue-800 mb-2">基本設定</h3>
+                <div className="text-sm text-blue-900 space-y-1">
+                  <p>あなたは<span className="font-semibold">「株式会社A-LT（ドメイン：@a-lt.co.jp）」のエンジニア</span>です。</p>
+                  <p className="mt-2">わたしの会社は<span className="font-semibold">社内サイトのみ、社外サイトは使用していません</span>。</p>
+                  <p className="mt-2 pt-2 border-t border-blue-200">各問題には個別の状況設定があります。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">お名前（必須）</label>
+            <input 
+              type="text" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              placeholder="山田 太郎" 
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+            />
+          </div>
+          <button 
+            onClick={handleStart} 
+            disabled={!name.trim()} 
+            className={`w-full py-3 rounded-lg font-semibold ${name.trim() ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+          >
+            クイズを開始する
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 復習モード
+  if (reviewMode && reviewIndex !== null) {
+    const q = questions[reviewIndex];
+    const answer = answers[reviewIndex];
+    const isCorrect = answer.selected === answer.correct;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-xl p-6 md:p-8">
+          <button 
+            onClick={handleBackToResults} 
+            className="mb-4 flex items-center text-blue-600 hover:text-blue-800 font-semibold"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            結果一覧に戻る
+          </button>
+
+          <div className="mb-6">
+            <div className={`p-4 rounded-lg border-2 mb-4 ${isCorrect ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-gray-800">問題 {q.id}</span>
+                  <div className="text-sm text-gray-600 mt-1">
+                    あなたの回答: {answer.selected}個 / 正解: {answer.correct}個
+                  </div>
+                </div>
+                {isCorrect ? 
+                  <CheckCircle className="w-8 h-8 text-green-600" /> : 
+                  <XCircle className="w-8 h-8 text-red-600" />
+                }
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+            <div className="flex items-start">
+              <Mail className="w-5 h-5 text-blue-600 mt-0.5 mr-2" />
+              <div>
+                <h3 className="font-semibold text-blue-800 mb-2">前提条件</h3>
+                <p className="text-sm text-blue-900">{q.context}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-6 mb-6">
+            <div className="flex items-start mb-4">
+              <Mail className="w-6 h-6 text-red-600 mr-3 mt-1" />
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">{q.subject}</h2>
+                <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-4 gap-2">
+                    <span className="font-semibold text-gray-700">差出人:</span>
+                    <span className="col-span-3 text-gray-600">{q.from}</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    <span className="font-semibold text-gray-700">添付:</span>
+                    <span className="col-span-3 text-gray-600">{q.attachment}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <p className="font-semibold text-gray-700 mb-2">本文:</p>
+              <div className="bg-white p-4 rounded border border-gray-200">
+                <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{q.body}</pre>
+              </div>
+            </div>
+          </div>
+
+          <div className={`border-l-4 p-4 mb-6 ${isCorrect ? 'bg-green-50 border-green-400' : 'bg-red-50 border-red-400'}`}>
+            <h3 className={`font-bold mb-3 ${isCorrect ? 'text-green-900' : 'text-red-900'}`}>
+              {isCorrect ? '✓ 正解です！' : '✗ 不正解'} 不審点の解説
+            </h3>
+            <ul className="space-y-2">
+              {q.points.map((p, idx) => (
+                <li key={idx} className={`text-sm flex items-start ${isCorrect ? 'text-green-900' : 'text-red-900'}`}>
+                  <span className="text-red-600 mr-2 font-bold">{idx + 1}.</span>
+                  <span>{p}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 結果画面
+  if (showResult) {
+    const r = rating(score);
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-xl p-6 md:p-8">
+          <div className="text-center mb-8">
+            <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
+              r.text === '優秀' ? 'bg-green-100' : 
+              r.text === '良好' ? 'bg-blue-100' : 
+              r.text === '要注意' ? 'bg-yellow-100' : 'bg-red-100'
+            }`}>
+              {r.text === '優秀' || r.text === '良好' ? 
+                <CheckCircle className={`w-10 h-10 ${r.color}`} /> : 
+                <AlertCircle className={`w-10 h-10 ${r.color}`} />
+              }
+            </div>
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">{name}さん、お疲れ様でした！</h2>
+            <p className="text-gray-600 mt-2">テストが完了したらLINEWORKSのアンケートに実施可否を回答お願いします。</p>
+          </div>
+          
+          <div className="bg-gray-50 rounded-lg p-6 mb-6 text-center">
+            <div className="text-5xl font-bold text-gray-800 mb-2">{score} / {questions.length}</div>
+            <div className={`text-2xl font-semibold mb-2 ${r.color}`}>{r.text}</div>
+            <p className="text-gray-600">{r.msg}</p>
+          </div>
+          
+          <div className="space-y-4 mb-8">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">回答結果</h3>
+            {answers.map((a, i) => (
+              <div key={i} className={`p-4 rounded-lg border-2 ${a.selected === a.correct ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'}`}>
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-800 mb-1 text-sm">問題 {a.id}: {questions[i].subject}</div>
+                    <div className="text-xs text-gray-600">あなたの回答: {a.selected}個 / 正解: {a.correct}個</div>
+                  </div>
+                  {a.selected === a.correct ? 
+                    <CheckCircle className="w-5 h-5 text-green-600 ml-2" /> : 
+                    <XCircle className="w-5 h-5 text-red-600 ml-2" />
+                  }
+                </div>
+                <div className="mt-2 pt-2 border-t border-gray-300">
+                  <p className="text-xs font-semibold text-gray-700 mb-1">不審点:</p>
+                  <ul className="space-y-1 mb-3">
+                    {questions[i].points.map((p, idx) => (
+                      <li key={idx} className="text-xs text-gray-600 flex items-start">
+                        <span className="text-red-600 mr-1">•</span>
+                        <span>{p}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button 
+                    onClick={() => handleReview(i)}
+                    className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 font-semibold"
+                  >
+                    問題を見る
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+            <h3 className="font-bold text-blue-900 mb-3">📧 標的型攻撃メールを見抜くポイント</h3>
+            <div className="space-y-2 text-sm text-blue-900">
+              <p><strong>1. 送信元アドレス:</strong> ドメインを確認（@a-lt.co.jp が正規）</p>
+              <p><strong>2. 誤字・脱字:</strong> セキュリテイ、センタ、参与などの誤字</p>
+              <p><strong>3. 期限で焦らせる:</strong> 本日17:30まで、本日23:59までなど</p>
+              <p><strong>4. 外部サイト誘導:</strong> 不審なURLへのリンク</p>
+              <p><strong>5. 署名の確認:</strong> 担当者名、連絡先が明記されているか</p>
+              <p><strong>6. 添付ファイル:</strong> .docx、.xls、.exeなどは要注意</p>
+            </div>
+          </div>
+
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+            <h3 className="font-bold text-red-900 mb-2">🚨 不審なメールを受信したら</h3>
+            <div className="text-sm text-red-900 space-y-1">
+              <p>❌ リンクをクリックしない</p>
+              <p>❌ 添付ファイルを開かない</p>
+              <p>✅ セキュリティ担当に報告</p>
+              <p>✅ 送信者に別の方法で確認</p>
+              <p>✅ 関係者に不審なメール受信について共有</p>
+            </div>
+          </div>
+
+          <button 
+            onClick={resetQuiz} 
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700"
+          >
+            もう一度挑戦する
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 問題画面
+  const q = questions[current];
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8">
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-xl p-6 md:p-8">
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-semibold text-gray-600">問題 {current + 1} / {questions.length}</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+              style={{ width: `${((current + 1) / questions.length) * 100}%` }} 
+            />
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+          <div className="flex items-start">
+            <Mail className="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-blue-800 mb-2">前提条件</h3>
+              <p className="text-sm text-blue-900">{q.context}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 rounded-lg p-6 mb-6">
+          <div className="flex items-start mb-4">
+            <Mail className="w-6 h-6 text-red-600 mr-3 mt-1" />
+            <div className="flex-1">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">{q.subject}</h2>
+              <div className="space-y-2 text-sm">
+                <div className="grid grid-cols-4 gap-2">
+                  <span className="font-semibold text-gray-700">差出人:</span>
+                  <span className="col-span-3 text-gray-600">{q.from}</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  <span className="font-semibold text-gray-700">添付:</span>
+                  <span className="col-span-3 text-gray-600">{q.attachment}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-gray-200 pt-4 mt-4">
+            <p className="font-semibold text-gray-700 mb-2">本文:</p>
+            <div className="bg-white p-4 rounded border border-gray-200">
+              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{q.body}</pre>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+          <div className="flex items-start">
+            <HelpCircle className="w-5 h-5 text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-yellow-800 mb-2">💡 ヒント</h3>
+              <div className="flex flex-wrap gap-2">
+                <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">送信元アドレス</span>
+                <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">誤字・脱字</span>
+                <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">期限日</span>
+                <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">外部サイト誘導</span>
+                <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">署名</span>
+                <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">添付ファイル</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <h3 className="font-semibold text-gray-800 mb-3">このメールにはいくつの不審点がありますか？</h3>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button 
+                key={n} 
+                onClick={() => setSelected(n)} 
+                className={`p-4 rounded-lg border-2 font-semibold transition-colors ${
+                  selected === n 
+                    ? 'bg-blue-600 text-white border-blue-600' 
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                }`}
+              >
+                {n === 5 ? '5個以上' : `${n}個`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button 
+          onClick={handleNext} 
+          disabled={selected === null} 
+          className={`w-full py-3 rounded-lg font-semibold transition-colors ${
+            selected === null 
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
+        >
+          {current < questions.length - 1 ? '次の問題へ' : '結果を見る'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<PhishingQuiz />);
+
+    </script>
+</body>
+</html>
